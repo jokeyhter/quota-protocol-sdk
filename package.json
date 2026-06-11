@@ -1,0 +1,58 @@
+{
+  "name": "quota-protocol-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for the Quota Protocol gateway — route external API calls through your prepaid, on-chain quota.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "quota",
+    "solana",
+    "api",
+    "gateway",
+    "rate-limit",
+    "openai",
+    "proxy",
+    "sdk"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "author": "Quota Protocol",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jokeyhter/quota-protocol-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jokeyhter/quota-protocol-sdk/issues"
+  },
+  "homepage": "https://github.com/jokeyhter/quota-protocol-sdk#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

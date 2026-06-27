@@ -36,6 +36,8 @@ export declare class QuotaClient {
     readonly tier: string;
     private readonly callsPerRequest;
     private readonly timeoutMs;
+    private readonly retries;
+    private readonly retryBackoffMs;
     private readonly fetchImpl;
     constructor(opts: QuotaClientOptions);
     /**
@@ -47,11 +49,24 @@ export declare class QuotaClient {
      */
     get gatewayUrl(): string;
     /**
+     * Drop-in `baseURL` for the official OpenAI SDK:
+     * `new OpenAI({ baseURL: quota.openaiBaseUrl, apiKey: "<your qk_ key>" })`.
+     * Calls are then metered and debited from your prepaid quota automatically.
+     */
+    get openaiBaseUrl(): string;
+    /**
+     * Proxied request with optional retry of transient failures (network errors
+     * and `502 upstream_unavailable`). See {@link QuotaClientOptions.retries}.
+     */
+    request(path: string, init?: RequestInit): Promise<QuotaResponse>;
+    /** Whether an error is a transient failure worth retrying. */
+    private isRetryable;
+    /**
      * Low-level proxied request. `path` is appended to {@link gatewayUrl} and
      * forwarded to the tier's upstream vendor. Throws {@link QuotaError} on
      * gateway-level failures; vendor responses (any status) are returned.
      */
-    request(path: string, init?: RequestInit): Promise<QuotaResponse>;
+    private doRequest;
     /** Proxied GET, parsing the vendor response as JSON. */
     get<T = unknown>(path: string, init?: RequestInit): Promise<QuotaJsonResponse<T>>;
     /** Proxied POST of a JSON body, parsing the vendor response as JSON. */

@@ -47,6 +47,8 @@ export class QuotaClient {
   readonly tier: string;
   private readonly callsPerRequest: number;
   private readonly timeoutMs: number;
+  private readonly retries: number;
+  private readonly retryBackoffMs: number;
   private readonly fetchImpl: typeof fetch;
 
   constructor(opts: QuotaClientOptions) {
@@ -59,6 +61,8 @@ export class QuotaClient {
     this.tier = opts.tier;
     this.callsPerRequest = opts.callsPerRequest ?? 1;
     this.timeoutMs = opts.timeoutMs ?? 30_000;
+    this.retries = Math.max(0, opts.retries ?? 0);
+    this.retryBackoffMs = opts.retryBackoffMs ?? 300;
 
     const f = opts.fetch ?? globalThis.fetch;
     if (typeof f !== "function") {
@@ -81,11 +85,51 @@ export class QuotaClient {
   }
 
   /**
+   * Drop-in `baseURL` for the official OpenAI SDK:
+   * `new OpenAI({ baseURL: quota.openaiBaseUrl, apiKey: "<your qk_ key>" })`.
+   * Calls are then metered and debited from your prepaid quota automatically.
+   */
+  get openaiBaseUrl(): string {
+    return `${this.gatewayUrl}/v1`;
+  }
+
+  /**
+   * Proxied request with optional retry of transient failures (network errors
+   * and `502 upstream_unavailable`). See {@link QuotaClientOptions.retries}.
+   */
+  async request(path: string, init: RequestInit = {}): Promise<QuotaResponse> {
+    let attempt = 0;
+    for (;;) {
+      try {
+        return await this.doRequest(path, init);
+      } catch (err) {
+        if (this.isRetryable(err) && attempt < this.retries) {
+          await delay(this.retryBackoffMs * 2 ** attempt);
+          attempt += 1;
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  /** Whether an error is a transient failure worth retrying. */
+  private isRetryable(err: unknown): boolean {
+    return (
+      err instanceof QuotaError &&
+      (err.code === "upstream_unavailable" || err.code === "http_error")
+    );
+  }
+
+  /**
    * Low-level proxied request. `path` is appended to {@link gatewayUrl} and
    * forwarded to the tier's upstream vendor. Throws {@link QuotaError} on
    * gateway-level failures; vendor responses (any status) are returned.
    */
-  async request(path: string, init: RequestInit = {}): Promise<QuotaResponse> {
+  private async doRequest(
+    path: string,
+    init: RequestInit = {}
+  ): Promise<QuotaResponse> {
     const url = path ? `${this.gatewayUrl}/${trimLeadingSlash(path)}` : this.gatewayUrl;
 
     const headers = new Headers(init.headers);
@@ -179,6 +223,9 @@ export class QuotaClient {
     }
   }
 }
+
+const delay = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 function quotaFromHeaders(h: Headers): QuotaInfo {
   const d = h.get("x-quota-debited");

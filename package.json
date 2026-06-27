@@ -1,6 +1,6 @@
 {
   "name": "quota-protocol-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript SDK for the Quota Protocol gateway — route external API calls through your prepaid, on-chain quota.",
   "type": "module",
   "main": "./dist/index.js",

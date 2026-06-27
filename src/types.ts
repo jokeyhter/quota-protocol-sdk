@@ -38,6 +38,15 @@ export interface QuotaClientOptions {
   callsPerRequest?: number;
   /** Per-request timeout in ms (default 30000). */
   timeoutMs?: number;
+  /**
+   * Retry transient failures (network errors and `502 upstream_unavailable`)
+   * up to this many times with exponential backoff. Default 0 (no retries).
+   * Never retries `quota_exhausted`, auth, or other deterministic errors —
+   * those would just fail again.
+   */
+  retries?: number;
+  /** Base backoff between retries in ms; doubles each attempt (default 300). */
+  retryBackoffMs?: number;
   /** Inject a custom fetch (testing / non-global-fetch runtimes). */
   fetch?: typeof fetch;
 }

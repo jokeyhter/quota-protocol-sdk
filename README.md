@@ -56,7 +56,7 @@ const quota = new QuotaClient({ baseUrl, apiKey, tier: "gpt-4o-mini-standard" })
 
 const openai = new OpenAI({
   apiKey, // your Quota gateway key
-  baseURL: `${quota.gatewayUrl}/v1`, // -> https://.../gateway/<tier>/v1
+  baseURL: quota.openaiBaseUrl, // -> https://.../gateway/<tier>/v1
 });
 
 const res = await openai.chat.completions.create({
@@ -79,12 +79,16 @@ injects the protocol's upstream credential server-side.
 | `tier`            | `string`        | —       | Tier slug, e.g. `gpt-4o-mini-standard`.            |
 | `callsPerRequest` | `number`        | `1`     | Calls metered per proxied request.                 |
 | `timeoutMs`       | `number`        | `30000` | Per-request timeout.                               |
+| `retries`         | `number`        | `0`     | Retry transient failures (network / `502`).        |
+| `retryBackoffMs`  | `number`        | `300`   | Base backoff; doubles each attempt.                |
 | `fetch`           | `typeof fetch`  | global  | Inject for testing / non-global-fetch runtimes.    |
 
 ### Methods
 
 - `get gatewayUrl` → `${baseUrl}/gateway/${tier}`. Append a vendor path, or add
   `/v1` for the OpenAI SDK `baseURL`.
+- `get openaiBaseUrl` → `${gatewayUrl}/v1`. Drop straight into
+  `new OpenAI({ baseURL: quota.openaiBaseUrl, apiKey })`.
 - `request(path, init?)` → `QuotaResponse` — low-level proxied call. Returns the
   raw vendor `Response` plus `quota` (`{ debited, remaining }`).
 - `get<T>(path, init?)` / `post<T>(path, body?, init?)` → `QuotaJsonResponse<T>`
@@ -107,6 +111,25 @@ response, not thrown.
 | `no_upstream`          | 501  | `isUpstreamProblem`   | Tier has no vendor wired (metering-only).|
 | `upstream_unavailable` | 502  | `isUpstreamProblem`   | Vendor unreachable — no quota spent.     |
 | `http_error`           | —    | —                     | Couldn't reach the gateway / other.      |
+
+### Retries
+
+Set `retries` to automatically re-attempt **transient** failures — network
+errors reaching the gateway (`http_error`) and `502 upstream_unavailable` (the
+vendor was unreachable, so no quota was spent). Backoff is exponential
+(`retryBackoffMs * 2 ** attempt`). Deterministic errors — `quota_exhausted`,
+auth, `no_position`, `no_upstream` — are never retried, since they'd just fail
+again.
+
+```ts
+const quota = new QuotaClient({
+  baseUrl,
+  apiKey,
+  tier: "gpt-4o-mini-standard",
+  retries: 3,           // up to 3 extra attempts
+  retryBackoffMs: 300,  // 300ms, 600ms, 1200ms
+});
+```
 
 ## Development
 

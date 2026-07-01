@@ -5,7 +5,7 @@ calls through a prepaid, on-chain quota: the gateway meters every request and
 debits the forward you bought in USDC. Swap your `baseURL`, pass your key, and
 handle balance/limit errors with typed exceptions.
 
-> Devnet preview. The gateway and contracts run on Solana **devnet**.
+> CA: 2PuWgsCjz15ZBrWJNotpKpzUyWwZqbDH5yZ5AhMLpump
 
 ## Install
 
